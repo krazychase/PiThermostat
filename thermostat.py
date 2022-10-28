@@ -7,6 +7,7 @@ from tkinter import *
 from tkinter import messagebox
 import datetime
 from pathlib import Path
+import configparser
 import board
 from adafruit_bme280 import basic as adafruit_bme280
 import RPi.GPIO as GPIO
@@ -26,10 +27,12 @@ class Program(Tk):
 		self.bind('<Escape>', self.onClosing)
 
 		# Setup vars
+		self.config = configparser.ConfigParser()
+		self.config.read('config.ini')
 		self.tempVar = IntVar(self, 0)
 		self.humVar = IntVar(self, 0)
 		self.presVar = IntVar(self, 0)
-		self.setTempVar = IntVar(self, 75)
+		self.setTempVar = IntVar(self, self.config['DEFAULT']['TempuratureInt'])
 		self.fanVar = StringVar(self, 'Off')
 		self.pumpVar = StringVar(self, 'Off')
 		self.speed = GPIO.HIGH
@@ -127,11 +130,13 @@ class Program(Tk):
 				pass
 			else:
 				self.setTempVar.set(self.setTempVar.get() + 1)
+				self.config['DEFAULT']['TempuratureInt'] = str(self.setTempVar.get())
 		else:
 			if self.setTempVar.get() <= 65:
 				pass
 			else:
 				self.setTempVar.set(self.setTempVar.get() - 1)
+				self.config['DEFAULT']['TempuratureInt'] = str(self.setTempVar.get())
 
 	def setFan(self):
 		'''
@@ -164,9 +169,8 @@ class Program(Tk):
 		Closed loop control of the swamp cooler.  
 		Loops every second and uses the sensor readings to control the AC.
 		'''
-		TEMP_DIFFERENTIAL = 2		# +- difference of when the AC turns on and off
-		WORKDAY = (5, 16, 0, 4)		# 5am, 5pm, Monday, Friday
-		FREEZEDAY = (0, 4, 0, 4)	# 2am, 5am, Monday, Friday
+		TEMP_DIFFERENTIAL = int(self.config['DEFAULT']['TempDifferential'])		# +- difference of when the AC turns on and off
+		SCHEDULE = eval(self.config['DEFAULT']['Schedule'])						# Schedule AC times
 
 		# Read from the sensor
 		temp = (self.bme280.temperature * 9/5) + 32						# Temp read in as Celsius, F = (C × 9/5) + 32
@@ -191,7 +195,7 @@ class Program(Tk):
 		elif fan == 'Auto':
 			now = datetime.datetime.now().hour
 			weekday = datetime.datetime.today().weekday()
-			if now >= WORKDAY[0] and now <= WORKDAY[1] and weekday >= WORKDAY[2] and weekday <= WORKDAY[3]:		# During the workday
+			if now >= SCHEDULE[0] and now <= SCHEDULE[1] and weekday >= SCHEDULE[2] and weekday <= SCHEDULE[3]:		# During the schedule period
 				if temp >= therm + TEMP_DIFFERENTIAL:
 					if temp >= therm + TEMP_DIFFERENTIAL + 2:		# If it's very warm, turn fan to High
 						self.speed = GPIO.LOW
@@ -207,11 +211,6 @@ class Program(Tk):
 				GPIO.output(self.speedRelay, GPIO.HIGH)			# Fan Off
 				GPIO.output(self.fanRelay, GPIO.HIGH)
 
-			if now >= FREEZEDAY[0] and now <= FREEZEDAY[1] and weekday >= FREEZEDAY[2] and weekday <= FREEZEDAY[3]:		# Workday early morning prep
-				
-				GPIO.output(self.speedRelay, GPIO.LOW) 		# Fan on to maximum
-				GPIO.output(self.fanRelay, GPIO.LOW)
-				
 		if pump == 'Off':
 			GPIO.output(self.pumpRelay, GPIO.HIGH)
 		elif pump == 'On':
@@ -219,20 +218,17 @@ class Program(Tk):
 		elif pump == 'Auto':
 			now = datetime.datetime.now().hour
 			weekday = datetime.datetime.today().weekday()
-			if now >= WORKDAY[0] and now <= WORKDAY[1] and weekday >= WORKDAY[2] and weekday <= WORKDAY[3]:		# During the workday
+			if now >= SCHEDULE[0] and now <= SCHEDULE[1] and weekday >= SCHEDULE[2] and weekday <= SCHEDULE[3]:		# During the schedule period
 				GPIO.output(self.pumpRelay, GPIO.LOW)		# Pump on
-
-			elif now >= FREEZEDAY[0] and now <= FREEZEDAY[1] and weekday >= FREEZEDAY[2] and weekday <= FREEZEDAY[3]:	# Workday early morning prep
-				GPIO.output(self.pumpRelay, GPIO.LOW)		# Pump on
-
 			else:
 				GPIO.output(self.pumpRelay, GPIO.HIGH)		# Pump off
 
-		if self.logCounter >= 1800:		# Log every 30 minutes
-			self.logCounter = 0
-			self.logTemp(temp, hum, pres)
-		else:
-			self.logCounter += 1
+		if self.config['DEFAULT']['LogBool']:
+			if self.logCounter >= 1800:		# Log every 30 minutes
+				self.logCounter = 0
+				self.logTemp(temp, hum, pres)
+			else:
+				self.logCounter += 1
 
 		self.after(1000, self.thermostat)
 
@@ -252,6 +248,8 @@ class Program(Tk):
 			GPIO.output(self.pumpRelay, GPIO.HIGH)
 			GPIO.output(self.speedRelay, GPIO.HIGH)
 			GPIO.output(self.fanRelay, GPIO.HIGH)
+			with open('config.ini', 'w') as f:
+				self.config.write(f)
 			self.destroy()
 
 
