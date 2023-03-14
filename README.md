@@ -9,6 +9,12 @@
 # Requirments
 - [Adafruit Blinka](https://learn.adafruit.com/circuitpython-on-raspberrypi-linux)
 - [Adafruit BME280](https://learn.adafruit.com/adafruit-bme280-humidity-barometric-pressure-temperature-sensor-breakout/python-circuitpython-test)
+# Installation
+- Move folder to desktop (or anywhere you want): `cp ./PiThermostat /Home/Pi/Desktop`
+- Make an autostart folder: `mkdir /home/pi/.config/autostart`
+- Move .desktop file to autostart folder: `cp ./thermostat.desktop /home/pi/.config/autostart`
+	- Note: Modify `Exec` in `./thermostat.desktop` if you placed main folder somewhere else
+- Schedule / logging can be modified in `./PiThermostat/config.ini`
 # Screenshot
 ![screenshot](./img/screenshot.png "Screenshot")
 # Circuit

@@ -1,0 +1,5 @@
+[Desktop Entry]
+Name=PiThermostat
+Type=Application
+Comment=PiThermostat
+Exec=/usr/bin/python3 /home/pi/Desktop/PiThermostat/thermostat.py

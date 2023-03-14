@@ -27,8 +27,9 @@ class Program(Tk):
 		self.bind('<Escape>', self.onClosing)
 
 		# Setup vars
+		self.path = Path(__file__).parent
 		self.config = configparser.ConfigParser()
-		self.config.read('config.ini')
+		self.config.read(self.path / 'config.ini')
 		self.tempVar = IntVar(self, 0)
 		self.humVar = IntVar(self, 0)
 		self.presVar = IntVar(self, 0)
@@ -236,7 +237,7 @@ class Program(Tk):
 		'''
 		Logs current temperature to file
 		'''
-		file = Path.cwd() / 'tempLog.txt'
+		file = self.path / 'tempLog.txt'
 		now = datetime.datetime.now()
 		with open(file, 'a+') as f:
 			f.write(f'{now}, {t}, {h}, {p}')
@@ -248,7 +249,7 @@ class Program(Tk):
 			GPIO.output(self.pumpRelay, GPIO.HIGH)
 			GPIO.output(self.speedRelay, GPIO.HIGH)
 			GPIO.output(self.fanRelay, GPIO.HIGH)
-			with open('config.ini', 'w') as f:
+			with open(self.path / 'config.ini', 'w') as f:
 				self.config.write(f)
 			self.destroy()
 
